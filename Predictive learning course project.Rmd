@@ -1,0 +1,73 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Pat Murphy"
+date: "Thursday, May 21, 2015"
+output: html_document
+---
+
+##Summary
+
+With the advent of devices such as Jawbone Up, Nike FuelBand, and Fitbit, we can now collectlarge amounts of data about personal activity at an efficient and inexpensive rate. Groups of people who are enthusiastic about personal fitness use these devices to help improve their health, find patterns in their behavior, or because they are fans of technology and they make up the quantified self movement. As opposed to understanding how much of a particular activity they do, people also have become very interested in how well they do it. With this project, data collected from accelerometers on the belt, forearm, arm, and dumbell of 6 participants is used to predict the manner in which they did the exercise. The data set has been broken up into Training and Testing sets, the manner being classified as the "classe" variable in the Training set. 
+
+##Loading and Cleaning the Data
+
+The data for this project come from http://groupware.les.inf.puc-rio.br/har. To get started, load the data sets into R and load all necessary packages for prediction.
+
+```{r}
+library(caret); library(randomForest)
+pmltraining <- read.table("C:/Users/Pat/Downloads/pml-training.csv", header = T, sep = ",", fill = T, stringsAsFactors = F, na.strings = c("", "NA"))
+pmltesting <- read.table("C:/Users/Pat/Downloads/pml-testing.csv", header = T, sep = ",", fill = T, stringsAsFactors = F, na.strings = c("", "NA"))
+```
+
+Next the data has to be cleaned. For prediction, outcome variable should be made into a factor. Next, remove all rows that are obviously trivial or can't help the prediction. Rows 1 through 7 are made up of non-integers, so they get removed immediately. Next, remove all rows that are missing most values and take the complete cases of what's left to ensure there are no missing values for the prediction.
+Set the seed for reproducibility.
+```{r}
+set.seed(1793)
+pmltraining$classe <- as.factor(pmltraining$classe)
+cleantraining <- pmltraining[,-(1:7)]
+clean0 <- colSums(is.na(cleantraining))/ncol(cleantraining) < .2
+cleantraining <- cleantraining[, clean0]
+cleantraining <- cleantraining[complete.cases(cleantraining),]
+```
+
+We do the above again to the testing set to ensure reproducibility on the testing.
+
+```{r}
+set.seed(1793)
+cleantesting <- pmltesting[,-(1:7)]
+cleantesting <- cleantesting[,clean0]
+cleantesting <- cleantesting[complete.cases(cleantesting),]
+```
+
+Finally, split the training set into its own training and test set to test prediction against known outcomes.
+
+```{r}
+inTrain = createDataPartition(y=pmltraining$classe, p=0.7, list=FALSE)
+training = cleantraining[inTrain,]
+testing = cleantraining[-inTrain,]
+```
+
+##Model Fit
+
+Here we fit the model using the randomForest function in the randomForest package. The outcome gets set against the rest of the cleaned field, the data set is our training set, and the method is class. The randomForest function does all the necessary cross validation within the code, so none is necessary.
+
+```{r}
+modFitRF <- randomForest(classe ~., data=training, method = "class")
+```
+
+##Prediction
+
+And, using the predict function, predict the outcomes of the test set with our randomForest model.
+
+```{r}
+pred <- predict(modFitRF, testing)
+testing$predRight <- pred==testing$classe
+table(pred, testing$classe)
+sum(pred==testing$classe)/length(testing$classe) ##accuracy rate
+```
+The table shows that we are overwhelmingly correct, and the formula below it shows the accuracy rate is over 99%.
+
+##Conclusion
+
+Predicting against the supplied test set, 20/20 were predicted correctly, making this a highly accurate prediction test. 
+
